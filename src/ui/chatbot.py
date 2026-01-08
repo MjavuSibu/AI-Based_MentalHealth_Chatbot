@@ -4,6 +4,7 @@ import numpy as np
 import os
 import sys
 from datetime import datetime
+from PIL import Image, ImageSequence
 
 from src.predictor import predict_intent
 from src.data_handler import load_intents
@@ -20,19 +21,89 @@ class MentalSparkApp(ctk.CTk):
         self.minsize(400, 700)
         self.maxsize(600, 700)
 
-        # Load responses
         _, _, self.responses = load_intents()
 
-        # Main container - light pink
+        self.animation_id = None
+
+        self.show_onboarding()
+
+    def show_onboarding(self):
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        onboarding_frame = ctk.CTkFrame(self, fg_color="white", corner_radius=0)
+        onboarding_frame.pack(fill="both", expand=True)
+
+        try:
+            gif_path = "assets/logo.gif"
+            gif = Image.open(gif_path)
+            frames = []
+
+            for frame in ImageSequence.Iterator(gif):
+                photo = ctk.CTkImage(
+                    light_image=frame.convert("RGBA"),
+                    dark_image=frame.convert("RGBA"),
+                    size=(300, 300)
+                )
+                frames.append(photo)
+
+            logo_label = ctk.CTkLabel(onboarding_frame, text="")
+            logo_label.pack(pady=(120, 40))
+
+            def animate(idx=0):
+                if idx < len(frames):
+                    logo_label.configure(image=frames[idx])
+                    delay = gif.info.get('duration', 100)
+                    self.animation_id = self.after(delay, animate, (idx + 1) % len(frames))
+
+            animate(0)
+
+        except Exception:
+            fallback = ctk.CTkLabel(onboarding_frame, text="MentalSpark",
+                                    font=ctk.CTkFont(size=48, weight="bold"),
+                                    text_color="#ff4081")
+            fallback.pack(pady=(120, 40))
+
+        tagline_label = ctk.CTkLabel(
+            onboarding_frame,
+            text="A spark for every mind",
+            font=ctk.CTkFont(size=28, slant="italic"),
+            text_color="#333333"
+        )
+        tagline_label.pack(pady=(10, 100))
+
+        start_btn = ctk.CTkButton(
+            onboarding_frame,
+            text="Get Started",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="white",
+            fg_color="#ff4081",
+            hover_color="#e91e63",
+            height=60,
+            width=300,
+            corner_radius=30,
+            command=self.start_chat
+        )
+        start_btn.pack(pady=20)
+
+    def start_chat(self):
+        if self.animation_id is not None:
+            self.after_cancel(self.animation_id)
+            self.animation_id = None
+
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        self.show_main_chat()
+
+    def show_main_chat(self):
         main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="#ffebee")
         main_frame.pack(fill="both", expand=True)
 
-        # Header - black background
         header = ctk.CTkFrame(main_frame, height=80, corner_radius=0, fg_color="#000000")
         header.pack(fill="x")
         header.pack_propagate(False)
 
-        # Back button
         back_btn = ctk.CTkButton(
             header,
             text="←",
@@ -45,7 +116,6 @@ class MentalSparkApp(ctk.CTk):
         )
         back_btn.pack(side="left", padx=20, pady=15)
 
-        # Title - centered
         title_frame = ctk.CTkFrame(header, fg_color="transparent")
         title_frame.pack(side="left", expand=True)
 
@@ -57,7 +127,6 @@ class MentalSparkApp(ctk.CTk):
         )
         title.pack()
 
-        # Settings button
         settings_btn = ctk.CTkButton(
             header,
             text="⚙️",
@@ -70,7 +139,6 @@ class MentalSparkApp(ctk.CTk):
         )
         settings_btn.pack(side="right", padx=20, pady=15)
 
-        # Chat area
         chat_frame = ctk.CTkFrame(main_frame, corner_radius=0, fg_color="#ffebee")
         chat_frame.pack(fill="both", expand=True)
 
@@ -86,7 +154,6 @@ class MentalSparkApp(ctk.CTk):
 
         self.messages_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
 
-        # Typing indicator
         self.typing_label = ctk.CTkLabel(
             self.messages_frame,
             text="MentalSpark is typing...",
@@ -98,7 +165,6 @@ class MentalSparkApp(ctk.CTk):
             pady=12
         )
 
-        # Input bar
         input_bar = ctk.CTkFrame(main_frame, height=90, corner_radius=0, fg_color="white")
         input_bar.pack(fill="x")
         input_bar.pack_propagate(False)
@@ -128,13 +194,10 @@ class MentalSparkApp(ctk.CTk):
         )
         send_btn.pack(side="right", padx=(0, 20), pady=18)
 
-        # Daily check-in
         self.daily_check_in()
 
-        # Daily positive affirmation
         self.daily_affirmation()
 
-        # Welcome message
         self.add_bot_message(
             "Hey! I'm MentalSpark, your personal companion. How are you feeling today? Remember, our chat is anonymous and secure.")
 
@@ -148,7 +211,6 @@ class MentalSparkApp(ctk.CTk):
     def daily_affirmation(self):
         affirmation_file = "last_affirmation.txt"
         today = datetime.now().strftime("%Y-%m-%d")
-
         affirmations = [
             "You are capable of amazing things.",
             "Your strength is greater than any struggle.",
@@ -171,9 +233,7 @@ class MentalSparkApp(ctk.CTk):
             "Breathe — you've got this moment.",
             "You are worthy of good things."
         ]
-
         show_affirmation = False
-
         if not os.path.exists(affirmation_file):
             show_affirmation = True
             with open(affirmation_file, "w") as f:
@@ -185,10 +245,9 @@ class MentalSparkApp(ctk.CTk):
                 show_affirmation = True
                 with open(affirmation_file, "w") as f:
                     f.write(today)
-
         if show_affirmation:
             affirmation = np.random.choice(affirmations)
-            self.add_bot_message(f" Daily Affirmation: \n{affirmation}")
+            self.add_bot_message(f" Daily Affirmation \n{affirmation}")
 
     def save_mood(self, mood):
         mood_file = "mood_history.txt"
@@ -203,27 +262,19 @@ class MentalSparkApp(ctk.CTk):
         settings_window.resizable(False, False)
         settings_window.transient(self)
         settings_window.grab_set()
-
         title = ctk.CTkLabel(settings_window, text="Settings", font=ctk.CTkFont(size=24, weight="bold"))
         title.pack(pady=20)
-
-        # Theme toggle (visual only)
         theme_frame = ctk.CTkFrame(settings_window)
         theme_frame.pack(fill="x", padx=40, pady=10)
-
         ctk.CTkLabel(theme_frame, text="Appearance", font=ctk.CTkFont(size=16)).pack(anchor="w", padx=20, pady=10)
-
         theme_switch = ctk.CTkSwitch(
             theme_frame,
             text="Dark Mode" if ctk.get_appearance_mode() == "Light" else "Light Mode",
             command=lambda: self.fake_toggle(theme_switch)
         )
         theme_switch.pack(anchor="w", padx=40)
-
         if ctk.get_appearance_mode() == "Dark":
             theme_switch.select()
-
-        # Clear chat
         ctk.CTkButton(
             settings_window,
             text="Clear Chat History",
@@ -231,15 +282,11 @@ class MentalSparkApp(ctk.CTk):
             hover_color="#c0392b",
             command=self.clear_chat
         ).pack(pady=20, ipadx=20, ipady=10)
-
-        # View mood history
         ctk.CTkButton(
             settings_window,
             text="View Mood History",
             command=self.view_mood_history
         ).pack(pady=10, ipadx=20, ipady=10)
-
-        # Close button
         ctk.CTkButton(
             settings_window,
             text="Close",
@@ -266,11 +313,8 @@ class MentalSparkApp(ctk.CTk):
             self.add_bot_message("No mood history yet — start chatting and I'll keep track!")
 
     def add_user_message(self, text):
-        # User container
         user_container = ctk.CTkFrame(self.messages_frame, fg_color="transparent")
         user_container.pack(anchor="e", padx=20, pady=3)
-
-        # Name label
         name_label = ctk.CTkLabel(
             user_container,
             text="You",
@@ -278,8 +322,6 @@ class MentalSparkApp(ctk.CTk):
             text_color="#666666"
         )
         name_label.pack(anchor="e")
-
-        # Message bubble
         bubble = ctk.CTkLabel(
             user_container,
             text=text,
@@ -293,15 +335,11 @@ class MentalSparkApp(ctk.CTk):
             justify="right"
         )
         bubble.pack(anchor="e")
-
         self.scroll_to_bottom()
 
     def add_bot_message(self, text):
-        # Bot container
         bot_container = ctk.CTkFrame(self.messages_frame, fg_color="transparent")
         bot_container.pack(anchor="w", padx=20, pady=3)
-
-        # Name label
         name_label = ctk.CTkLabel(
             bot_container,
             text="MentalSpark",
@@ -309,8 +347,6 @@ class MentalSparkApp(ctk.CTk):
             text_color="#666666"
         )
         name_label.pack(anchor="w")
-
-        # Message bubble
         bubble = ctk.CTkLabel(
             bot_container,
             text=text,
@@ -324,7 +360,6 @@ class MentalSparkApp(ctk.CTk):
             justify="left"
         )
         bubble.pack(anchor="w")
-
         self.scroll_to_bottom()
 
     def show_typing(self):
@@ -349,13 +384,9 @@ class MentalSparkApp(ctk.CTk):
         msg = self.entry.get().strip()
         if not msg:
             return
-
         self.add_user_message(msg)
         self.entry.delete(0, END)
-
         self.show_typing()
-
-        # Crisis detection
         crisis_keywords = ["suicide", "kill myself", "end my life", "hurt myself", "don't want to live", "want to die"]
         if any(keyword in msg.lower() for keyword in crisis_keywords):
             crisis_reply = (
@@ -367,8 +398,6 @@ class MentalSparkApp(ctk.CTk):
             )
             self.after(800, lambda: [self.hide_typing(), self.add_bot_message(crisis_reply)])
             return
-
-        # Mood tracking
         mood_keywords = {
             "happy": ["happy", "good", "great", "awesome", "feeling good", "im good"],
             "okay": ["okay", "fine", "alright"],
@@ -383,8 +412,6 @@ class MentalSparkApp(ctk.CTk):
                 break
         if detected_mood:
             self.save_mood(detected_mood.capitalize())
-
-
         intent, confidence = predict_intent(msg, use_model="rf")
         reply_list = self.responses.get(intent, [
             "I'm glad to hear that! What's making you feel good today?",
@@ -394,7 +421,6 @@ class MentalSparkApp(ctk.CTk):
             "I'm here for you. How can I help?"
         ])
         reply = np.random.choice(reply_list)
-
         self.after(1500, lambda: [self.hide_typing(), self.add_bot_message(reply)])
 
 if __name__ == "__main__":
