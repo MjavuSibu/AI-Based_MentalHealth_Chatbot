@@ -66,7 +66,7 @@ class MentalSparkApp(ctk.CTk):
 
         tagline_label = ctk.CTkLabel(
             onboarding_frame,
-            text="A spark for every mind",
+            text="A spark for every mind  ",
             font=ctk.CTkFont(size=28, slant="italic"),
             text_color="#333333"
         )
