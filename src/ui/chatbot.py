@@ -247,7 +247,7 @@ class MentalSparkApp(ctk.CTk):
                     f.write(today)
         if show_affirmation:
             affirmation = np.random.choice(affirmations)
-            self.add_bot_message(f" Daily Affirmation \n{affirmation}")
+            self.add_bot_message(f" Daily Affirmation: \n{affirmation}")
 
     def save_mood(self, mood):
         mood_file = "mood_history.txt"
